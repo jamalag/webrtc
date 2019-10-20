@@ -1,7 +1,5 @@
 import React, { Component } from 'react';
 
-import io from 'socket.io-client'
-
 class App extends Component {
   constructor(props) {
     super(props)
@@ -9,48 +7,21 @@ class App extends Component {
     // https://reactjs.org/docs/refs-and-the-dom.html
     this.localVideoref = React.createRef()
     this.remoteVideoref = React.createRef()
-
-    this.socket = null
-    this.candidates = []
   }
 
   componentDidMount = () => {
 
-    this.socket = io(
-      '/webrtcPeer',
-      {
-        path: '/webrtc',
-        query: {}
-      }
-    )
+    const pc_config = null
 
-    this.socket.on('connection-success', success => {
-      console.log(success)
-    })
-
-    this.socket.on('offerOrAnswer', (sdp) => {
-      this.textref.value = JSON.stringify(sdp)
-    })
-
-    this.socket.on('candidate', (candidate) => {
-      // console.log('From Peer... ', JSON.stringify(candidate))
-      this.candidates = [...this.candidates, candidate]
-    })
-
-    let pc_config = null
-
-    pc_config = {
-      "iceServers": [
-        //{
-          // urls: 'stun:[STUN_IP]:[PORT]',
-          // 'credentials': '[YOR CREDENTIALS]',
-          // 'username': '[USERNAME]'
-        //},
-        {
-          urls : 'stun:stun.l.google.com:19302'
-        }
-      ]
-    }
+    // const pc_config1 = {
+    //   "iceServers": [
+    //     {
+    //       urls: 'stun:[STUN_IP]:[PORT]',
+    //       'credentials': '[YOR CREDENTIALS]',
+    //       'username': '[USERNAME]'
+    //     }
+    //   ]
+    // }
 
     // https://developer.mozilla.org/en-US/docs/Web/API/RTCPeerConnection
     // create an instance of RTCPeerConnection
@@ -60,10 +31,8 @@ class App extends Component {
     this.pc.onicecandidate = (e) => {
       // send the candidates to the remote peer
       // see addCandidate below to be triggered on the remote peer
-      if (e.candidate) {
-        // console.log(JSON.stringify(e.candidate))
-        this.sendToPeer('candidate', e.candidate)
-      }
+      if (e.candidate)
+        console.log(JSON.stringify(e.candidate))
     }
 
     // triggered when there is a change in connection state
@@ -109,43 +78,32 @@ class App extends Component {
       .catch(failure)
   }
 
-  sendToPeer = (messageType, payload) => {
-    this.socket.emit(messageType, {
-      socketID: this.socket.id,
-      payload
-    })
-  }
-
   /* ACTION METHODS FROM THE BUTTONS ON SCREEN */
 
   createOffer = () => {
-    // console.log('Offer')
+    console.log('Offer')
 
     // https://developer.mozilla.org/en-US/docs/Web/API/RTCPeerConnection/createOffer
     // initiates the creation of SDP
     this.pc.createOffer({ offerToReceiveVideo: 1 })
       .then(sdp => {
-        // console.log(JSON.stringify(sdp))
+        console.log(JSON.stringify(sdp))
 
         // set offer sdp as local description
         this.pc.setLocalDescription(sdp)
-
-        this.sendToPeer('offerOrAnswer', sdp)
     })
   }
 
   // https://developer.mozilla.org/en-US/docs/Web/API/RTCPeerConnection/createAnswer
   // creates an SDP answer to an offer received from remote peer
   createAnswer = () => {
-    // console.log('Answer')
+    console.log('Answer')
     this.pc.createAnswer({ offerToReceiveVideo: 1 })
       .then(sdp => {
-        // console.log(JSON.stringify(sdp))
+        console.log(JSON.stringify(sdp))
 
         // set answer sdp as local description
         this.pc.setLocalDescription(sdp)
-
-        this.sendToPeer('offerOrAnswer', sdp)
     })
   }
 
@@ -159,15 +117,11 @@ class App extends Component {
 
   addCandidate = () => {
     // retrieve and parse the Candidate copied from the remote peer
-    //const candidate = JSON.parse(this.textref.value)
+    const candidate = JSON.parse(this.textref.value)
+    console.log('Adding candidate:', candidate)
 
     // add the candidate to the peer connection
-    //this.pc.addIceCandidate(new RTCIceCandidate(candidate))
-
-    this.candidates.forEach(candidate => {
-      console.log(JSON.stringify(candidate))
-      this.pc.addIceCandidate(new RTCIceCandidate(candidate))
-    });
+    this.pc.addIceCandidate(new RTCIceCandidate(candidate))
   }
 
   render() {
