@@ -1,51 +1,48 @@
+
 const express = require('express')
-const app = express()
-const port = 8080
 
 var io = require('socket.io')
 ({
-  // transports  : [ 'websocket' ],
-  // transports: [
-  //   'websocket',
-  //   'flashsocket',
-  //   'htmlfile',
-  //   'xhr-polling',
-  //   'jsonp-polling',
-  //   'polling'
-  // ],
   path: '/webrtc'
 })
 
-let sequenceNumberByPeer = new Map()
+const app = express()
+const port = 8080
 
+// app.get('/', (req, res) => res.send('Hello World!!!!!'))
+
+//https://expressjs.com/en/guide/writing-middleware.html
 app.use(express.static(__dirname + '/build'))
 app.get('/', (req, res, next) => {
-    // res.sendFile(__dirname + '/public/views/index.html')
-    res.sendFile(__dirname + '/public/build/index.html')
+    res.sendFile(__dirname + '/build/index.html')
 })
-
-app.get('/hello', (req, res) => res.send('Hello World!!!!!'))
 
 const server = app.listen(port, () => console.log(`Example app listening on port ${port}!`))
 
 io.listen(server)
 
+// https://www.tutorialspoint.com/socket.io/socket.io_namespaces.htm
 const peers = io.of('/webrtcPeer')
 
+// keep a reference of all socket connections
+let connectedPeers = new Map()
+
 peers.on('connection', socket => {
-console.log(socket.id)
+
+  console.log(socket.id)
   socket.emit('connection-success', { success: socket.id })
+
+  connectedPeers.set(socket.id, socket)
 
   socket.on('disconnect', () => {
     console.log('disconnected')
-    sequenceNumberByPeer.delete(socket.id)
+    connectedPeers.delete(socket.id)
   })
 
-  sequenceNumberByPeer.set(socket.id, socket)
-
   socket.on('offerOrAnswer', (data) => {
-    // send to the other peear if any
-    for (const [socketID, socket] of sequenceNumberByPeer.entries()) {
+    // send to the other peer(s) if any
+    for (const [socketID, socket] of connectedPeers.entries()) {
+      // don't send to self
       if (socketID !== data.socketID) {
         console.log(socketID, data.payload.type)
         socket.emit('offerOrAnswer', data.payload)
@@ -54,12 +51,14 @@ console.log(socket.id)
   })
 
   socket.on('candidate', (data) => {
-    // send candidate to the other peear if any
-    for (const [socketID, socket] of sequenceNumberByPeer.entries()) {
+    // send candidate to the other peer(s) if any
+    for (const [socketID, socket] of connectedPeers.entries()) {
+      // don't send to self
       if (socketID !== data.socketID) {
         console.log(socketID, data.payload)
         socket.emit('candidate', data.payload)
       }
     }
   })
+
 })

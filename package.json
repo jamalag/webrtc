@@ -2,7 +2,6 @@
   "name": "webrtc",
   "version": "0.1.0",
   "private": true,
-  "proxy": "http://localhost:8080",
   "dependencies": {
     "react": "^16.10.2",
     "react-dom": "^16.10.2",
